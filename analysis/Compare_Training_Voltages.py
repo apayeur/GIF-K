@@ -1,3 +1,5 @@
+import sys
+sys.path.append('../src/')
 from Experiment import *
 from GIF_K import *
 from AEC_Badel import *
@@ -22,7 +24,7 @@ data_folders_for_separate_experiments = ['seventh_set', 'eighth_set', 'ninth_set
 # For all experiments, extract the cell names
 CellNames = {}
 for experiment_folder in data_folders_for_separate_experiments:
-    folder_path = './' + experiment_folder + '/'
+    folder_path = '../data/' + experiment_folder + '/'
     CellNames[experiment_folder] = [name for name in os.listdir(folder_path) if os.path.isdir(folder_path + name) and '_5HT' in name]
 
 
@@ -38,8 +40,8 @@ for experiment_folder in data_folders_for_separate_experiments:
         # Load data
         #################################################################################################
 
-        path_data = './' + experiment_folder + '/' + cell_name + '/'
-        path_results = './Results/' + cell_name + '/'
+        path_data = '../data/' + experiment_folder + '/' + cell_name + '/'
+        path_results = '../results/' + cell_name + '/'
 
         if not os.path.exists(path_results):
             os.makedirs(path_results)
@@ -87,34 +89,76 @@ for experiment_folder in data_folders_for_separate_experiments:
         all_time_traces[cell_name] = time
         experiment_counter+=1
 
-# Group 1 = 8 cells
-Group1 = ['DRN157_5HT', 'DRN159_5HT', 'DRN160_5HT', 'DRN162_5HT',
-          'DRN163_5HT', 'DRN164_5HT', 'DRN165_5HT', 'DRN156_5HT']
-#Group2 = 10 cells
-Group2 = ['DRN652_5HT', 'DRN651_5HT', 'DRN655_5HT', 'DRN660_5HT', 'DRN656_5HT',
-          'DRN653_5HT', 'DRN654_5HT', 'DRN659_5HT', 'DRN657_5HT', 'DRN539_5HT']
-Group3 = ['DRN544_5HT', 'DRN543_5HT']
+Groups = {'Group1':['DRN157_5HT', 'DRN159_5HT', 'DRN160_5HT', 'DRN162_5HT',
+          'DRN163_5HT', 'DRN164_5HT', 'DRN165_5HT', 'DRN156_5HT'],
+          'Group2':['DRN652_5HT', 'DRN651_5HT', 'DRN655_5HT', 'DRN660_5HT', 'DRN656_5HT',
+          'DRN653_5HT', 'DRN654_5HT', 'DRN659_5HT', 'DRN657_5HT', 'DRN539_5HT'],
+          'Group3':['DRN544_5HT', 'DRN543_5HT']}
 
 
+
+# for each group, find neurons with almost-matching current traces
+nearly_id_groups = {'Group1': [], 'Group2': [], 'Group3': []}
+for group in Groups.iterkeys():
+    number_of_cells_in_group = len(Groups[group])
+    for i, cell_name in enumerate(Groups[group]):
+        for j in range(i+1,number_of_cells_in_group):
+            distance = np.max(np.abs(1000*all_current_traces[cell_name] - 1000*all_current_traces[Groups[group][j]]))
+            print "distance = %f" % distance
+            if distance < 5.:
+                nearly_id_groups[group].append(cell_name)
+                nearly_id_groups[group].append(Groups[group][j])
+    nearly_id_groups[group] = set(nearly_id_groups[group])
+    print len(nearly_id_groups[group])
 
 # Plotting group-wise traces
-fig1 = plt.figure(1, figsize=(5,8))
-ax1 = fig1.add_subplot(len(Group1)+1, 1, 1)
-ax1.set_xlim(20, 30)
-ax1.axis('off')
-for i in range(len(Group1)):
-    ax1.plot(all_time_traces[Group1[i]] / 1000., 1000*all_current_traces[Group1[i]], lw=0.2, label=Group1[i])
-    ax = fig1.add_subplot(len(Group1) + 1, 1, i+2)
-    ax.plot(all_time_traces[Group1[i]] / 1000., all_voltage_traces[Group1[i]], lw=0.5)
-    #ax.text(0.5, 0.95, cell_name, transform=ax.transAxes, fontsize=10)
-    ax.set_xlim(20, 30)
-    ax.set_ylim(-100, 0)
-    ax.axis('off')
-ax1.legend()
-plt.tight_layout()
+for i, group in enumerate(nearly_id_groups):
+    if len(nearly_id_groups[group]) > 0:
+        fig = plt.figure(i+1, figsize=(5,8))
+        ax1 = fig.add_subplot(len(nearly_id_groups[group])+1, 1, 1)
+        ax1.set_xlim(20, 30)
+        #ax1.axis('off')
+        ax1.set_ylabel('Current [pA]')
+        for j, cell_name in enumerate(nearly_id_groups[group]):
+            ax1.plot(all_time_traces[cell_name] / 1000., 1000*all_current_traces[cell_name], lw=0.2)
+            ax = fig.add_subplot(len(nearly_id_groups[group]) + 1, 1, j+2)
+            ax.plot(all_time_traces[cell_name] / 1000., all_voltage_traces[cell_name], lw=0.5)
+            #ax.text(0.5, 0.95, cell_name, transform=ax.transAxes, fontsize=10)
+            ax.set_xlim(20, 30)
+            ax.set_ylim(-100, 0)
+            ax.set_ylabel('Voltage [mV]')
+        ax.set_xlabel('Time [s]')
+            #ax.axis('off')
+        #ax1.legend()
+        plt.tight_layout()
 plt.show()
 
+'''
+for i, group in enumerate(nearly_id_groups):
+    if len(nearly_id_groups[group]) > 0:
+        fig = plt.figure(i+1, figsize=(5,8))
+        ax1 = fig.add_subplot(2, 1, 1)
+        ax1.set_xlim(20, 30)
+        ax1.set_ylim(-200,500)
+        #ax1.axis('off')
+        ax1.set_ylabel('Current [pA]')
+        ax = fig.add_subplot(2, 1, 2)
+        ax.set_xlim(20, 30)
+        ax.set_ylim(-100, 0)
+        ax.set_ylabel('Voltage [mV]')
+        ax.set_xlabel('Time [s]')
+        for j, cell_name in enumerate(nearly_id_groups[group]):
+            ax1.plot(all_time_traces[cell_name] / 1000., 1000*all_current_traces[cell_name], lw=0.2)
+            ax.plot(all_time_traces[cell_name] / 1000., all_voltage_traces[cell_name], lw=0.5)
+            #ax.text(0.5, 0.95, cell_name, transform=ax.transAxes, fontsize=10)
+            #ax.axis('off')
+        #ax1.legend()
+        plt.tight_layout()
+plt.show()
+'''
 
+
+'''
 # Plotting traces
 fig1 = plt.figure(1, figsize=(9,8))
 i=0
@@ -142,3 +186,4 @@ for experiment_folder in data_folders_for_separate_experiments:
 plt.tight_layout()
 
 plt.show()
+'''
